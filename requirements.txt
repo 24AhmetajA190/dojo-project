@@ -1,0 +1,5 @@
+email_validator
+random_username
+bcrypt
+psycopg2
+flask
