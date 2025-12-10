@@ -3,11 +3,32 @@
 {% block content %}
 <head>
     <title>{% block title %}Page 2{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='CSS/AccountPages.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='CSS/Dashboard.css') }}">
     </head>
 <body>
     <main>
-        <p>{{ session['user'] }}
-        </p>
+        <h2>Welcome, {{ session['user'] }}</h2>
+        <h3>Your Booked Sessions</h3>
+        {% if bookings and bookings|length > 0 %}
+            <ul style="max-width:600px;margin:2rem auto;list-style:none;padding:0;">
+            {% for booking in bookings %}
+                <form method="POST" style="margin-bottom:1.5rem;padding:1rem;border:1px solid #000;background:#fafafa;max-width:600px;">
+                    <li style="list-style:none;padding:0;margin:0;display:flex;align-items:center;justify-content:space-between;width:100%;">
+                        <div>
+                            <strong>Order:</strong> {{ booking[1] }}, {{ booking[2] }}, {{ booking[3] }}<br>
+                            <small>Booked at: {{ booking[4] }}</small>
+                        </div>
+                        <div>
+                            <input type="hidden" name="cancel_booking_id" value="{{ booking[0] }}">
+                            <button type="submit" name="cancel_btn" class="btn" style="border-radius:0;background:#fff;color:#000;border:2px solid #000;height:40px;margin-left:1rem;">Cancel</button>
+                        </div>
+                    </li>
+                </form>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>You have no bookings yet.</p>
+        {% endif %}
+    </main>
     </body>
 {% endblock %}

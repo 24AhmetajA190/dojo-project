@@ -1,0 +1,54 @@
+{% extends "Basis.HTML" %}
+
+{% block content %}
+<head>
+    <title>{{ session_obj.title }} - Session Details</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='CSS/Booking.css') }}">
+</head>
+<body>
+    <main style="max-width:600px;margin:2rem auto;">
+        <h2>{{ session_obj.title }}</h2>
+        <div style="margin-bottom:1rem;">{{ session_obj.description }}</div>
+        <form id="bookingForm" method="POST" style="margin-top:2rem;">
+            <p>Sort the events below by your preference (top = most preferred):</p>
+            <ul id="eventList" style="list-style:none;padding:0;margin-bottom:2rem;">
+            {% for event in session_obj.events %}
+                <li class="event-item" draggable="true" style="padding:1rem 2rem;margin-bottom:1rem;background:#fff;border:2px solid #000;color:#000;font-size:1.2rem;cursor:move;border-radius:0;user-select:none;">{{ event }}<input type="hidden" name="event_order" value="{{ event }}"></li>
+            {% endfor %}
+            </ul>
+            <button type="submit" class="btn" style="width:100%;height:60px;background:#fff;color:#000;border:2px solid #000;border-radius:0;font-size:1.1rem;">Book Session</button>
+        </form>
+    </main>
+    <script>
+    // Drag and drop event ordering
+    const eventList = document.getElementById('eventList');
+    let dragSrcEl = null;
+    eventList.addEventListener('dragstart', function(e) {
+        dragSrcEl = e.target;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', dragSrcEl.outerHTML);
+        setTimeout(() => dragSrcEl.style.display = 'none', 0);
+    });
+    eventList.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    });
+    eventList.addEventListener('drop', function(e) {
+        e.preventDefault();
+        if (e.target.classList.contains('event-item')) {
+            eventList.insertBefore(dragSrcEl, e.target.nextSibling === dragSrcEl ? e.target : e.target.nextSibling);
+        }
+    });
+    eventList.addEventListener('dragend', function(e) {
+        dragSrcEl.style.display = '';
+    });
+    // On submit, update hidden inputs to match order
+    document.getElementById('bookingForm').addEventListener('submit', function(e) {
+        const items = eventList.querySelectorAll('.event-item');
+        items.forEach((li, idx) => {
+            li.querySelector('input').setAttribute('name', 'event_order_' + idx);
+        });
+    });
+    </script>
+</body>
+{% endblock %}

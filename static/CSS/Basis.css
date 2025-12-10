@@ -1,43 +1,63 @@
-    @font-face 
-    {
-        font-family: 'Nunito Sans';
-        src: url("../Font/NunitoSans.ttf");
-    }
+@font-face
+{
+    font-family: 'Nunito Sans';
+    src: url("../Font/NunitoSans.ttf");
+}
 
-    body {
-        font-family: 'Nunito Sans', Arial, sans-serif;
-        font-size: 150%;
-    }
+body {
+    font-family: 'Nunito Sans', Arial, sans-serif;
+    font-size: 150%;
+}
 
-    .navbar
-    {
-        font-family: 'Nunito Sans';
-        background-color: #F5F5F5;
-        border: 1px solid #000000;
-    }
+.navbar
+{
+    font-family: 'Nunito Sans';
+    background-color: #F5F5F5;
+    border: 1px solid #000000;
+}
 
-    .navbar .nav-link, .navbar-brand {
-        font-size: 1.5rem;
-    }
-    .nav-link
-    {
-        color: #000000;
-    }
+.navbar .nav-link, .navbar-brand {
+    font-size: 1.5rem;
+}
+.nav-link
+{
+    color: #000000;
+}
 
-    .nav-link:hover
-    {
-        color: #BC1142;
-    }
+.nav-link:hover
+{
+    color: #BC1142;
+}
 
-    #okButton:hover {
-        background: #222222 !important;
-    }
+#okButton {
+    border-radius: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+    border: 2px solid #000 !important;
+    height: 60px !important;
+    font-size: 1.1rem !important;
+}
+#okButton:hover {
+    background: #d3d3d3 !important;
+    color: #000 !important;
+    border-color: #000 !important;
+}
+#customModal .modal-content {
+    border-radius: 0 !important;
+    border: 2px solid #000 !important;
+    background: #fff !important;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.12);
+}
+#customModal .modal-body {
+    font-family: 'Nunito Sans', Arial, sans-serif;
+    color: #000;
+}
 
-    .navbar-toggler-icon {
-        background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='black' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3E%3C/svg%3E");
-    }
+.navbar-toggler-icon {
+    background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='black' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3E%3C/svg%3E");
+}
 
-    .navbar-toggler:focus {
-        outline: 2px solid black;
-        outline-offset: 2px;
-    }
+.navbar-toggler:focus {
+    outline: 2px solid black;
+    outline-offset: 2px;
+}

@@ -106,12 +106,12 @@ button[type="submit"]:hover, .btn-primary:hover, .btn:hover {
         display: none; /* Hide the vertical border on small screens */
     }
     .right {
-        background-color: #000000 !important; /* switch right to black on small screens */
+        background-color: #ffffff !important; /* switch right to black on small screens */
         min-height: 50vh;
         height: 50vh;
     }
     .left {
-        background-color: #000000 !important; /* switch left to black on small screens */
+        background-color: #ffffff !important; /* switch left to black on small screens */
         min-height: 50vh;
         height: 50vh;
     }

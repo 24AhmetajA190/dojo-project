@@ -23,15 +23,13 @@ class postgresHandler():
         self.port = port
 
     def dbConnect(self):
-        print(f"[DEBUG] Connecting to database: {self.dbName} as user: {self.userName} on host: {self.host} port: {self.port}")
-        connect = psycopg2.connect(
+        return psycopg2.connect(
             dbname=self.dbName,
             user=self.userName,
             password=self.password,
             host=self.host,
             port=self.port
         )
-        return connect
 
     def dbInitializeCheck(self):
         try:
@@ -45,10 +43,21 @@ CREATE TABLE IF NOT EXISTS userDetailsTable (
     email TEXT
 );
                     ''')
-                    print("Checked for userDetailsTable")
+                    cursor.execute('''
+CREATE TABLE IF NOT EXISTS bookingTable (
+    id SERIAL PRIMARY KEY,
+    user_email TEXT NOT NULL,
+    session_id INTEGER NOT NULL,
+    event1 TEXT NOT NULL,
+    event2 TEXT NOT NULL,
+    event3 TEXT NOT NULL,
+    status TEXT DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+                    ''')
                     connect.commit()
-        except Exception as e:
-            print(f"[ERROR] dbInitializeCheck failed: {e}")
+        except Exception:
+            pass
 
     def insertUserDetails(self, username, password, email):
         with self.dbConnect() as connect:
@@ -58,15 +67,12 @@ CREATE TABLE IF NOT EXISTS userDetailsTable (
                     (email,)
                 )
                 if cursor.fetchone():
-                    print("Email already exists.")
                     return False
                 sqlString = """INSERT INTO userDetailsTable (username, password, email)
 VALUES (%s, %s, %s)"""
                 if not username:
                     username = generate_username(1)[0]
-                passwordEncryption = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                passwordEncryption = passwordEncryption.strip()
-                print(f"{username} {passwordEncryption} {email}")
+                passwordEncryption = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8').strip()
                 cursor.execute(sqlString, (username, passwordEncryption, email))
                 connect.commit()
                 return True
@@ -81,29 +87,46 @@ WHERE LOWER(email) = LOWER(%s);
                 """
                 cursor.execute(sqlQuery, (email,))
                 userData = cursor.fetchone()
-                
-                if userData:
-                    storedHashedPassword = userData[0]
-                    if isinstance(storedHashedPassword, str):
-                        storedHashedPassword = storedHashedPassword.strip()
-                        if not storedHashedPassword.startswith("$2"):
-                            print("Invalid bcrypt hash format in database.")
-                            return False
-                        storedHashedPassword = storedHashedPassword.encode('utf-8')
-                    try:
-                        isPasswordCorrect = bcrypt.checkpw(password.encode('utf-8'), storedHashedPassword)
-                    except ValueError as e:
-                        print(f"bcrypt error: {e}")
-                        return False
-                    if isPasswordCorrect:
-                        print("Login successful.")
-                        return True
-                    else:
-                        print("Incorrect password.")
-                        return False
-                else:
-                    print("Email not found.")
+                if not userData:
                     return False
+                storedHashedPassword = userData[0]
+                if isinstance(storedHashedPassword, str):
+                    storedHashedPassword = storedHashedPassword.strip()
+                    if not storedHashedPassword.startswith("$2"):
+                        return False
+                    storedHashedPassword = storedHashedPassword.encode('utf-8')
+                try:
+                    return bcrypt.checkpw(password.encode('utf-8'), storedHashedPassword)
+                except ValueError:
+                    return False
+
+    def insertBooking(self, user_email, event_order, session_id):
+        with self.dbConnect() as connect:
+            with connect.cursor() as cursor:
+                # Check if booking already exists for this user and session
+                check_sql = '''SELECT 1 FROM bookingTable WHERE user_email = %s AND session_id = %s'''
+                cursor.execute(check_sql, (user_email, session_id))
+                if cursor.fetchone():
+                    return False  # Booking already exists
+                sql = '''INSERT INTO bookingTable (user_email, session_id, event1, event2, event3) VALUES (%s, %s, %s, %s, %s)'''
+                cursor.execute(sql, (user_email, session_id, event_order[0], event_order[1], event_order[2]))
+                connect.commit()
+                return True
+
+    def getBookingsForUser(self, user_email):
+        with self.dbConnect() as connect:
+            with connect.cursor() as cursor:
+                sql = '''SELECT id, event1, event2, event3, created_at FROM bookingTable WHERE user_email = %s ORDER BY created_at DESC'''
+                cursor.execute(sql, (user_email,))
+                return cursor.fetchall()
+
+    def cancelBooking(self, booking_id, user_email):
+        with self.dbConnect() as connect:
+            with connect.cursor() as cursor:
+                sql = '''DELETE FROM bookingTable WHERE id = %s AND user_email = %s'''
+                cursor.execute(sql, (booking_id, user_email))
+                connect.commit()
+                return cursor.rowcount > 0
 
 ##################################################
 # SQLite
@@ -114,15 +137,7 @@ class sqliteHandler():
         self.dbFile = dbFile
 
     def dbConnect(self):
-        db_exists = os.path.exists(self.dbFile)
-        connect = sqlite3.connect(self.dbFile)
-
-        if not db_exists:
-            print(f"[INFO] Created new SQLite database file: {self.dbFile}")
-        else:
-            print(f"[INFO] Opened existing SQLite database file: {self.dbFile}")
-
-        return connect
+        return sqlite3.connect(self.dbFile)
 
     def dbInitializeCheck(self):
         try:
@@ -136,10 +151,21 @@ CREATE TABLE IF NOT EXISTS userDetailsTable (
     email TEXT
 );
                 ''')
-                print("Checked for userDetailsTable (SQLite)")
+                cursor.execute('''
+CREATE TABLE IF NOT EXISTS bookingTable (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_email TEXT NOT NULL,
+    session_id INTEGER NOT NULL,
+    event1 TEXT NOT NULL,
+    event2 TEXT NOT NULL,
+    event3 TEXT NOT NULL,
+    status TEXT DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+                    ''')
                 connect.commit()
-        except Exception as e:
-            print(f"[ERROR] dbInitializeCheck failed: {e}")
+        except Exception:
+            pass
 
     def insertUserDetails(self, username, password, email):
         with self.dbConnect() as connect:
@@ -149,15 +175,12 @@ CREATE TABLE IF NOT EXISTS userDetailsTable (
                 (email,)
             )
             if cursor.fetchone():
-                print("Email already exists.")
                 return False
             sqlString = """INSERT INTO userDetailsTable (username, password, email)
 VALUES (?, ?, ?)"""
             if not username:
                 username = generate_username(1)[0]
-            passwordEncryption = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            passwordEncryption = passwordEncryption.strip()
-            print(f"{username} {passwordEncryption} {email}")
+            passwordEncryption = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8').strip()
             cursor.execute(sqlString, (username, passwordEncryption, email))
             connect.commit()
             return True
@@ -172,30 +195,49 @@ WHERE LOWER(email) = LOWER(?);
             """
             cursor.execute(sqlQuery, (email,))
             userData = cursor.fetchone()
-            
+
         if not userData:
-            print("Email not found.")
             return False
 
         storedHashedPassword = userData[0]
-
         if isinstance(storedHashedPassword, str):
             storedHashedPassword = storedHashedPassword.strip()
             if not storedHashedPassword.startswith("$2"):
-                print("Invalid bcrypt hash format in database.")
                 return False
             storedHashedPassword = storedHashedPassword.encode('utf-8')
 
         try:
-            if bcrypt.checkpw(password.encode('utf-8'), storedHashedPassword):
-                print("Login successful.")
-                return True
-            else:
-                print("Incorrect password.")
-                return False
-        except ValueError as e:
-            print(f"bcrypt error: {e}")
+            return bcrypt.checkpw(password.encode('utf-8'), storedHashedPassword)
+        except ValueError:
             return False
+
+    def insertBooking(self, user_email, event_order, session_id):
+        with self.dbConnect() as connect:
+            cursor = connect.cursor()
+            # Check if booking already exists for this user and session
+            check_sql = '''SELECT 1 FROM bookingTable WHERE user_email = ? AND session_id = ?'''
+            cursor.execute(check_sql, (user_email, session_id))
+            if cursor.fetchone():
+                return False  # Booking already exists
+            sql = '''INSERT INTO bookingTable (user_email, session_id, event1, event2, event3) VALUES (?, ?, ?, ?, ?)'''
+            cursor.execute(sql, (user_email, session_id, event_order[0], event_order[1], event_order[2]))
+            connect.commit()
+            return True
+
+    def getBookingsForUser(self, user_email):
+        with self.dbConnect() as connect:
+            cursor = connect.cursor()
+            sql = '''SELECT id, event1, event2, event3, created_at FROM bookingTable WHERE user_email = ? ORDER BY created_at DESC'''
+            cursor.execute(sql, (user_email,))
+            return cursor.fetchall()
+
+    def cancelBooking(self, booking_id, user_email):
+        with self.dbConnect() as connect:
+            cursor = connect.cursor()
+            sql = '''DELETE FROM bookingTable WHERE id = ? AND user_email = ?'''
+            cursor.execute(sql, (booking_id, user_email))
+            connect.commit()
+            return cursor.rowcount > 0
 
 
 ##################################################
@@ -232,30 +274,24 @@ def databaseSelectionHandler(connectionDetailsFilePath="connectionDetails.json",
                 dbName=postgresConnector["dbname"],
                 port=postgresConnector["port"]
             )
-            print(f"{programInstance}: Valid Postgres connection details.")
             try:
                 connection.dbInitializeCheck()
                 return connection
-            except Exception as e:
-                print(f"DB initialization failed: {e}")
+            except Exception:
                 return None
-        except (KeyError, TypeError) as e:
-            print(f"{programInstance}: Invalid Postgres connection details. {e}")
+        except (KeyError, TypeError):
             return None
     elif databaseSelected == 2:
         try:
             connection = sqliteHandler()
-            print(f"{programInstance}: Using SQLite database file: {connection.dbFile}")
             try:
                 connection.dbInitializeCheck()
                 return connection
-            except Exception as e:
-                print(f"DB initialization failed: {e}")
+            except Exception:
                 return None
-        except Exception as e:
-            print(f"{programInstance}: SQLite handler error: {e}")
+        except Exception:
             return None
-    print("No valid database connection. Using false handler.")
+    return None
 
 if __name__ == "__main__":
     print("If you're seeing this you didn't load 'app.py'")
