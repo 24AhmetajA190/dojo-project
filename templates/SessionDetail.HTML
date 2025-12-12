@@ -19,34 +19,61 @@
             <button type="submit" class="btn" style="width:100%;height:60px;background:#fff;color:#000;border:2px solid #000;border-radius:0;font-size:1.1rem;">Book Session</button>
         </form>
     </main>
+    <style>
+        /* Smooth transitions for list items and ghost during drag */
+        .event-item {
+            transition: transform 160ms cubic-bezier(.2,.8,.2,1), box-shadow 160ms ease;
+            will-change: transform;
+        }
+        .sortable-ghost {
+            opacity: 0.85;
+            transform: scale(0.99);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+        }
+        .dragging {
+            opacity: 0.9;
+        }
+    </style>
+
+    <!-- use SortableJS for smoother drag & drop with animation and touch support -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script>
-    // Drag and drop event ordering
+    // Initialize Sortable on the list for smooth reordering
     const eventList = document.getElementById('eventList');
-    let dragSrcEl = null;
-    eventList.addEventListener('dragstart', function(e) {
-        dragSrcEl = e.target;
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/html', dragSrcEl.outerHTML);
-        setTimeout(() => dragSrcEl.style.display = 'none', 0);
-    });
-    eventList.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-    });
-    eventList.addEventListener('drop', function(e) {
-        e.preventDefault();
-        if (e.target.classList.contains('event-item')) {
-            eventList.insertBefore(dragSrcEl, e.target.nextSibling === dragSrcEl ? e.target : e.target.nextSibling);
+    new Sortable(eventList, {
+        animation: 180,          // ms animation for moving elements
+        ghostClass: 'sortable-ghost',
+        dragClass: 'dragging',
+        fallbackOnBody: false,
+        swapThreshold: 0.65,
+        chosenClass: 'chosen',
+        onStart: function (evt) {
+            // improve performance while dragging
+            document.body.style.userSelect = 'none';
+        },
+        onEnd: function (evt) {
+            document.body.style.userSelect = '';
         }
     });
-    eventList.addEventListener('dragend', function(e) {
-        dragSrcEl.style.display = '';
-    });
-    // On submit, update hidden inputs to match order
+
+    // On submit, update hidden inputs to match order (use values from text content)
     document.getElementById('bookingForm').addEventListener('submit', function(e) {
         const items = eventList.querySelectorAll('.event-item');
+        // Remove existing hidden inputs so we generate a clean ordered set
+        // (helps avoid stale inputs if JS reordered names previously)
         items.forEach((li, idx) => {
-            li.querySelector('input').setAttribute('name', 'event_order_' + idx);
+            let input = li.querySelector('input[type="hidden"]');
+            if (!input) {
+                input = document.createElement('input');
+                input.type = 'hidden';
+                li.appendChild(input);
+            }
+            input.name = 'event_order_' + idx;
+            // textContent may include the hidden input's value; better to use a data attribute or strip the input value
+            // We'll derive the event text by cloning the node and removing hidden inputs
+            const clone = li.cloneNode(true);
+            clone.querySelectorAll('input[type="hidden"]').forEach(i=>i.remove());
+            input.value = clone.textContent.trim();
         });
     });
     </script>

@@ -6,7 +6,7 @@ import re
 import bcrypt
 
 app = Flask(__name__)
-app.secret_key = b"a"
+app.secret_key = b"x"
 connection = databaseSelectionHandler()
 
 SESSIONS = [

@@ -10,134 +10,15 @@ import sqlite3
 from random_username.generate import generate_username
 
 ##################################################
-# Postgres
+# BaseHandler
 ##################################################
 
-class postgresHandler():
-    def __init__(self, connectionDetails, host, userName, password, dbName, port):
-        self.connectionDetails = connectionDetails
-        self.host = host
-        self.userName = userName
-        self.password = password
-        self.dbName = dbName
-        self.port = port
-
-    def dbConnect(self):
-        return psycopg2.connect(
-            dbname=self.dbName,
-            user=self.userName,
-            password=self.password,
-            host=self.host,
-            port=self.port
-        )
-
-    def dbInitializeCheck(self):
-        try:
-            with self.dbConnect() as connect:
-                with connect.cursor() as cursor:
-                    cursor.execute('''
-CREATE TABLE IF NOT EXISTS userDetailsTable (
-    id SERIAL PRIMARY KEY,
-    username TEXT,
-    password TEXT,
-    email TEXT
-);
-                    ''')
-                    cursor.execute('''
-CREATE TABLE IF NOT EXISTS bookingTable (
-    id SERIAL PRIMARY KEY,
-    user_email TEXT NOT NULL,
-    session_id INTEGER NOT NULL,
-    event1 TEXT NOT NULL,
-    event2 TEXT NOT NULL,
-    event3 TEXT NOT NULL,
-    status TEXT DEFAULT 'active',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-                    ''')
-                    connect.commit()
-        except Exception:
-            pass
-
-    def insertUserDetails(self, username, password, email):
-        with self.dbConnect() as connect:
-            with connect.cursor() as cursor:
-                cursor.execute(
-                    "SELECT 1 FROM userDetailsTable WHERE LOWER(email) = LOWER(%s);",
-                    (email,)
-                )
-                if cursor.fetchone():
-                    return False
-                sqlString = """INSERT INTO userDetailsTable (username, password, email)
-VALUES (%s, %s, %s)"""
-                if not username:
-                    username = generate_username(1)[0]
-                passwordEncryption = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8').strip()
-                cursor.execute(sqlString, (username, passwordEncryption, email))
-                connect.commit()
-                return True
-
-    def extractUserDetails(self, password, email):
-        with self.dbConnect() as connect:
-            with connect.cursor() as cursor:
-                sqlQuery = """
-SELECT password
-FROM userDetailsTable
-WHERE LOWER(email) = LOWER(%s);
-                """
-                cursor.execute(sqlQuery, (email,))
-                userData = cursor.fetchone()
-                if not userData:
-                    return False
-                storedHashedPassword = userData[0]
-                if isinstance(storedHashedPassword, str):
-                    storedHashedPassword = storedHashedPassword.strip()
-                    if not storedHashedPassword.startswith("$2"):
-                        return False
-                    storedHashedPassword = storedHashedPassword.encode('utf-8')
-                try:
-                    return bcrypt.checkpw(password.encode('utf-8'), storedHashedPassword)
-                except ValueError:
-                    return False
-
-    def insertBooking(self, user_email, event_order, session_id):
-        with self.dbConnect() as connect:
-            with connect.cursor() as cursor:
-                # Check if booking already exists for this user and session
-                check_sql = '''SELECT 1 FROM bookingTable WHERE user_email = %s AND session_id = %s'''
-                cursor.execute(check_sql, (user_email, session_id))
-                if cursor.fetchone():
-                    return False  # Booking already exists
-                sql = '''INSERT INTO bookingTable (user_email, session_id, event1, event2, event3) VALUES (%s, %s, %s, %s, %s)'''
-                cursor.execute(sql, (user_email, session_id, event_order[0], event_order[1], event_order[2]))
-                connect.commit()
-                return True
-
-    def getBookingsForUser(self, user_email):
-        with self.dbConnect() as connect:
-            with connect.cursor() as cursor:
-                sql = '''SELECT id, event1, event2, event3, created_at FROM bookingTable WHERE user_email = %s ORDER BY created_at DESC'''
-                cursor.execute(sql, (user_email,))
-                return cursor.fetchall()
-
-    def cancelBooking(self, booking_id, user_email):
-        with self.dbConnect() as connect:
-            with connect.cursor() as cursor:
-                sql = '''DELETE FROM bookingTable WHERE id = %s AND user_email = %s'''
-                cursor.execute(sql, (booking_id, user_email))
-                connect.commit()
-                return cursor.rowcount > 0
-
-##################################################
-# SQLite
-##################################################
-
-class sqliteHandler():
-    def __init__(self, dbFile="userdetails.db"):
+class baseDatabaseHandler():
+    def __init__(self, dbFile=None, connectionDetails=None):
         self.dbFile = dbFile
 
     def dbConnect(self):
-        return sqlite3.connect(self.dbFile)
+        raise NotImplementedError("Subclasses must implement dbConnect()")
 
     def dbInitializeCheck(self):
         try:
@@ -148,7 +29,8 @@ CREATE TABLE IF NOT EXISTS userDetailsTable (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT,
     password TEXT,
-    email TEXT
+    email TEXT,
+    role INTEGER DEFAULT 1
 );
                 ''')
                 cursor.execute('''
@@ -239,6 +121,38 @@ WHERE LOWER(email) = LOWER(?);
             connect.commit()
             return cursor.rowcount > 0
 
+##################################################
+# Postgres
+##################################################
+
+class postgresHandler(baseDatabaseHandler):
+    def __init__(self, connectionDetails, host, userName, password, dbName, port):
+        super().__init__(dbFile=None, connectionDetails=connectionDetails)
+        self.host = host
+        self.userName = userName
+        self.password = password
+        self.dbName = dbName
+        self.port = port
+
+    def dbConnect(self):
+        return psycopg2.connect(
+            dbname=self.dbName,
+            user=self.userName,
+            password=self.password,
+            host=self.host,
+            port=self.port
+        )
+
+##################################################
+# SQLite
+##################################################
+
+class sqliteHandler(baseDatabaseHandler):
+    def __init__(self, dbFile="userdetails.db"):
+        super().__init__(dbFile=dbFile, connectionDetails=None)
+
+    def dbConnect(self):
+        return sqlite3.connect(self.dbFile)
 
 ##################################################
 # Database Selection
