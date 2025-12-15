@@ -6,17 +6,8 @@ import re
 import bcrypt
 
 app = Flask(__name__)
-app.secret_key = b"x"
+app.secret_key = b"r"
 connection = databaseSelectionHandler()
-
-SESSIONS = [
-    {
-        "id": 1,
-        "title": "Skegness Dojo",
-        "description": "Descriptions.",
-        "events": ["Event 1", "Event 2", "Event 3"]
-    },
-]
 
 @app.route("/", methods=["GET"])
 def Home():
@@ -26,7 +17,8 @@ def Home():
 def Booking():
     if not session.get("user"):
         return redirect(url_for("Login"))
-    return render_template("Booking.HTML", sessions=SESSIONS)
+    sessions = connection.getAllSessions() if connection else []
+    return render_template("Booking.HTML", sessions=sessions)
 
 @app.route("/contact", methods=["GET"])
 def Contact():
@@ -87,7 +79,8 @@ def Login():
 def SessionDetail(session_id):
     if not session.get("user"):
         return redirect(url_for("Login"))
-    session_obj = next((s for s in SESSIONS if s["id"] == session_id), None)
+    sessions = connection.getAllSessions() if connection else []
+    session_obj = next((s for s in sessions if s["id"] == session_id), None)
     if not session_obj:
         return "Session not found", 404
     message = None

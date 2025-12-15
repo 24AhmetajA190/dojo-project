@@ -31,8 +31,7 @@ CREATE TABLE IF NOT EXISTS userDetailsTable (
     password TEXT,
     email TEXT,
     role INTEGER DEFAULT 1
-);
-                ''')
+);''')
                 cursor.execute('''
 CREATE TABLE IF NOT EXISTS bookingTable (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,8 +42,18 @@ CREATE TABLE IF NOT EXISTS bookingTable (
     event3 TEXT NOT NULL,
     status TEXT DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-                    ''')
+);''')
+                cursor.execute('''
+CREATE TABLE IF NOT EXISTS sessionsTable (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT,
+    description TEXT,
+    address TEXT,
+    event1 TEXT,
+    event2 TEXT,
+    event3 TEXT,
+    visibility TEXT DEFAULT 'public'
+);''')
                 connect.commit()
         except Exception:
             pass
@@ -120,6 +129,22 @@ WHERE LOWER(email) = LOWER(?);
             cursor.execute(sql, (booking_id, user_email))
             connect.commit()
             return cursor.rowcount > 0
+
+    def getAllSessions(self):
+        with self.dbConnect() as connect:
+            cursor = connect.cursor()
+            cursor.execute('''SELECT id, title, description, address, event1, event2, event3 FROM sessionsTable''')
+            sessions = []
+            for row in cursor.fetchall():
+                events = [e for e in [row[4], row[5], row[6]] if e]
+                sessions.append({
+                    "id": row[0],
+                    "title": row[1],
+                    "description": row[2],
+                    "address": row[3],
+                    "events": events
+                })
+            return sessions
 
 ##################################################
 # Postgres

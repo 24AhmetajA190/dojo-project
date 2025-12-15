@@ -9,6 +9,7 @@
     <main style="max-width:600px;margin:2rem auto;">
         <h2>{{ session_obj.title }}</h2>
         <div style="margin-bottom:1rem;">{{ session_obj.description }}</div>
+        <div style="margin-bottom:1rem;">{{ session_obj.address }}</div>        
         <form id="bookingForm" method="POST" style="margin-top:2rem;">
             <p>Sort the events below by your preference (top = most preferred):</p>
             <ul id="eventList" style="list-style:none;padding:0;margin-bottom:2rem;">
@@ -20,7 +21,6 @@
         </form>
     </main>
     <style>
-        /* Smooth transitions for list items and ghost during drag */
         .event-item {
             transition: transform 160ms cubic-bezier(.2,.8,.2,1), box-shadow 160ms ease;
             will-change: transform;
